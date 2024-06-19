@@ -20,14 +20,19 @@ if(token!== null) {
   console.log("Token not found");
 }
 
-const authToken = token;
 
-  // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImdhdXJhdiIsImRlc2lnbmF0aW9uIjoiY29tcGFueSIsImlhdCI6MTcxODQ0ODE3MywiZXhwIjoxNzE5MDUyOTczfQ.ERbN8pla0bYN8Lk7Dq_GLuNY6OI_KZrtIqpfFSziaDU";
-const socketUrl = "http://localhost:5000";
+const socketUrl = "https://game-crm-rtp-backend.onrender.com/";
 export class SocketManager {
   private socket;
 
   constructor(private onInitDataReceived: () => void) { 
+    const token = getToken();
+    if(token!== null) {
+      console.log("Token:", token);
+    } else {
+      console.log("Token not found");
+    }
+   let  authToken = token || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImdhdXJhdiIsImRlc2lnbmF0aW9uIjoiY29tcGFueSIsImlhdCI6MTcxODQ0ODE3MywiZXhwIjoxNzE5MDUyOTczfQ.ERbN8pla0bYN8Lk7Dq_GLuNY6OI_KZrtIqpfFSziaDU";
     this.socket = io(socketUrl, {
       auth: {
         token: authToken,
