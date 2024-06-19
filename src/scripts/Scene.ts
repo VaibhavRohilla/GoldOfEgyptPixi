@@ -1,13 +1,13 @@
-import { Container, DisplayObject, Graphics, Resource, Texture } from "pixi.js";
+import { Container, DisplayObject, Graphics, Resource, Sprite, Texture } from "pixi.js";
 import { config } from "./appConfig";
 import { AnimatedBackgroundSprite, BackgroundGraphic, BackgroundSprite } from "./Background";
 import { Globals } from "./Globals";
+import { staticData } from "./LoaderConfig";
 
 export abstract class Scene {
 
 
     private sceneContainer: Container;
-    private fullBackground: number  = 0x123123;
 
 
     mainContainer: Container;
@@ -17,30 +17,23 @@ export abstract class Scene {
 
     constructor() {
         this.sceneContainer = new Container();
+        // if (typeof mainBackgroundColor === "number") {
+            // this.mainBackground = new BackgroundGraphic(config.logicalWidth, config.logicalHeight, this.fullBackground);
+            
+            // } 
+            // else {
+                const Background = Sprite.from(staticData.Background);
 
- 
-        
-       
-        
+                this.mainBackground = new BackgroundSprite(Background.texture, window.innerWidth, window.innerHeight);
+                this.addChildToFullScene(this.mainBackground);
+        // }
+
 
         this.mainContainer = new Container();
 
         this.resetMainContainer();
 
         this.sceneContainer.addChild(this.mainContainer);
-
-
-
-        // if (typeof mainBackgroundColor === "number") {
-            // this.mainBackground = new BackgroundGraphic(config.logicalWidth, config.logicalHeight, mainBackgroundColor);
-            
-            // } 
-            // else {
-                this.mainBackground = new BackgroundSprite(Globals.resources.backGround.texture, config.logicalWidth, config.logicalHeight);
-                this.addChildToFullScene(this.mainBackground);
-        // }
-
-
 
         // const mask = new Graphics();
         // mask.beginFill(0xffffff);
@@ -66,7 +59,10 @@ export abstract class Scene {
     }
     resize(): void {
         this.resetMainContainer();
-        // this.fullBackground.resetBg(window.innerWidth, window.innerHeight);
+        // this.mainBackground.resetBg(window.innerWidth, window.innerHeight);
+        this.mainBackground.width =  window.innerWidth;
+        this.mainBackground.height =  window.innerHeight;
+
     }
 
     initScene(container: Container) {

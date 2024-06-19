@@ -51,18 +51,18 @@ export class SceneManager {
 
     }
     update(dt: number) {
-        TWEEN.update();
-
+        
         if (this.scene && this.scene.update) {
+            TWEEN.update();
             this.scene.update(dt);
         }
 
         // Globals.stats.update();
-        // Globals.fpsStats.update();
+        Globals.fpsStats.update();
 
         // Globals.stats.begin();
 
-        // // monitored code goes here
+        // monitored code goes here
 
         // Globals.stats.end();
     }

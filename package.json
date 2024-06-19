@@ -41,6 +41,7 @@
     "howler": "^2.2.3",
     "pixi-spine": "^3.0.13",
     "pixi.js": "^6.3.3",
+    "socket.io-client": "^4.7.5",
     "stats.js": "^0.17.0"
   },
   "repository": {

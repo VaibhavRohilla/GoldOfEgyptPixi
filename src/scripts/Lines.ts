@@ -1,87 +1,61 @@
-import { Graphics, Sprite } from "pixi.js";
-import { boardConfigVar, boardConfig } from './Globals';
-import { log } from "console";
-import { Button } from "./Button";
-import { Easing, Tween } from "@tweenjs/tween.js";
+import { Container, Graphics } from "pixi.js";
+import {initData, testLines}from "./Globals"
+import { start } from "repl";
 
-export class Lines extends Graphics{
- 
-    lineG !: Graphics;
-    linePos !: {x : number,y : number}[] ;
-    moveLine !: Graphics;
-    colorCode : number = 0x000000;
-    side : boolean = false;
-    blinkTween: any;
+let xOffset = -1;
+let yOffset = -1;
 
-    
+export class LineGenerator extends Container
+{
+    lineArr : Lines[] = []
+    constructor(yOf : number, xOf : number)
+    {
+        super(); 
+        xOffset = xOf; 
+        yOffset = yOf; 
+        // console.log(initData.gameData.Lines);
+        
+        for(let i = 0; i < initData.gameData.Lines.length ; i++)
+        {
+            let line  = new Lines(i);
+            line.position.y = -yOffset;
+            this.addChild(line)
+            this.lineArr.push(line);
+        }
+        
+}
+
+showLines(lines : number[]){ 
+    for(let i = 0; i < lines.length ; i++){
+        // console.log(this.lineArr[lines[i]]);
+        
+     this.lineArr[lines[i]].showLine();}}
+    hideLines(){this.lineArr.forEach(element => { element.hideLine();});}
+
+}
 
 
-    // false Side = LEFT  AND True Side = Right
-    constructor(color: string, Side:boolean, payLineNo : number, yPosition : number,lineLocaitons :{x:number, y:number}[] ,board : Sprite)
+export class Lines extends Graphics
+{
+    constructor(index : number)
     {
         super();
+        let lastPosX = xOffset;
+        let lastPosY = yOffset*initData.gameData.Lines[index][0];
+     
+        this.visible = false;
+        const yLineOffset = 50;
+        this.position.set(-xOffset*3,yOffset*initData.gameData.Lines[index][0] - yLineOffset);
         
-        this.colorCode = parseInt(color);
-        this.lineG = new Graphics;
-        this.lineG.beginFill(this.colorCode, 1);
-        this.lineG.lineStyle(2, 0xFEEB77, 1);
-        this.lineG.drawCircle(0,0,15);
-        this.lineG.endFill();
-
-        this.addChild(this.lineG);
-        this.lineG.position.y = yPosition - board.height/2;
-        this.side = Side;
-        this.lineG.position.x = -board.width/2;
-        this.lineG.zIndex = 1;
-        
-        if( this.side == true )
+        this.lineStyle(10, 0xFFEA31)
+        this.moveTo(lastPosX, lastPosY- yLineOffset)
+        for(let i = 1 ; i < initData.gameData.Lines[index].length ; i++ )
         {
-            this.lineG.position.x = board.width/2;
+            this.lineTo(lastPosX + xOffset*i,  yOffset*initData.gameData.Lines[index][i]- yLineOffset);
+            lastPosY = yOffset*initData.gameData.Lines[index][i];
         }
-        this.makeLines(lineLocaitons,board);
     }
 
-
-    makeLines(line :{x:number, y:number}[],board : Sprite)
-    {
-        const button = new Graphics;
-        button.lineStyle(10, this.colorCode, 1,0.5);
-        button.zIndex = 0;
-        let offset = 0;
-        for(let i = 0 ; i < line.length ; i++)
-        {
-
-        const rightPos = (line[i].y) - this.lineG.position.y;
-        if(i == 0)
-        {
-            offset = rightPos;
-        }
-
-        button.lineTo( (line[i].x + 12) - this.lineG.position.x , rightPos-offset);
-        button.moveTo( (line[i].x + 12) - this.lineG.position.x , rightPos-offset);
-        }
-        this.lineG.addChild(button);
+    showLine(){this.visible = true; }
+    hideLine(){this.visible = false;}
     }
-
-    makeitVisible(visible : boolean )
-    {
-        if(!visible)
-        {
-            if(this.blinkTween)
-            this.blinkTween.stop();
-        }
-        this.visible = visible;
-    }
-
-    blink()
-    {
-        this.visible = true;
-        this.blinkTween = new Tween(this.lineG)
-        .to({alpha : 0.01},500)
-        .easing(Easing.Elastic.InOut)
-        .repeat(1)
-        .yoyo(true)
-        .start();
-    }
-   
-}

@@ -1,323 +1,322 @@
-import { Container, Sprite, Resource } from 'pixi.js';
-import { Globals, boardConfigVar, moneyInfo, randomRange } from './Globals';
+import { AnimatedSprite, Container, Sprite } from "pixi.js";
+import { Globals, ResultData, currentGameData, initData, style } from "./Globals";
 import { TextLabel } from "./TextLabel";
-import { log } from 'console';
-import { Easing, Tween } from "@tweenjs/tween.js";
-import { assignPlayerBet, getPlayerCredit } from './ApiPasser';
+import { config } from "./appConfig";
+import { Socket } from "socket.io-client";
+import { stringify } from "querystring";
 
 export class UiContainer extends Container
 {
-    spin : Sprite;
+	spinBtn!: AnimatedSprite;
+	maxbetBtn!: AnimatedSprite;
+	autoBetBtn!: AnimatedSprite;
+	fireAnimation: AnimatedSprite[] = [];
+	CurrentBetText!: TextLabel;
+	currentWiningText!: TextLabel;
+	currentBalanceText!: TextLabel;
     
-    balanceText : TextLabel;
-    wonAmountText: TextLabel;
-
-    betText: TextLabel;
-    lineBetL !: Sprite;
-    lineBetR !: Sprite;
-
-    maxLinesButtonL !: Sprite;
-    maxLinesButtonR !: Sprite;
-
-    wonButton !: Sprite;
-    betButton !: Sprite;
-    balanceButton !: Sprite;
-    paylinesButton !: Sprite;
-    lineBetButton !:Sprite;
-
-    
-    constructor()
+    constructor(spinCallBack : ()=>void)
     {
         super();
 
-  
-
-        this.spin = new Sprite(Globals.resources.Sprint.texture);
-        this.spin.anchor.set(1,0.5);
-        this.spin.scale.set(0.6);
-        this.spin.position.y = 280;
-
-        
-        this.addChild(this.spin);
-        this.spin.interactive = true;
-        this.spin.buttonMode = true;
-        
-        
-        this.spin.on("pointerdown",()=>
-        {
-           this.callSpin();
-        })
-
-        getPlayerCredit();
-        this.lineBetText();
-
-        this.wonAmountText = new TextLabel(0, 0, 0.5, `Won  :  ${moneyInfo.score}`, 25, 0xF2AE33 );
-        this.wonAmountText.position.x = 0;
-        this.wonAmountText.position.y = 0;
-    
-        this.wonButton = new Sprite(Globals.resources.ButtonBg1.texture)
-        this.wonButton.anchor.set(0.5);
-        this.wonButton.scale.set(0.6);
-
-        this.wonButton.position.y = 280;
-        this.addChild(this.wonButton);
-        this.wonButton.addChild(this.wonAmountText);
-
-        this.balanceButton = new Sprite(Globals.resources.ButtonBg1.texture)
-        this.balanceButton.anchor.set(0.5);
-        this.balanceButton.scale.set(0.6);
-        this.balanceButton.position.y = 280;
-        
-        this.balanceText = new TextLabel(0, 0, 0.5, `Balance  :  ${moneyInfo.Balance}`, 25, 0xF2AE33 );
-        this.balanceText.anchor.set(0,0.5);
-        this.balanceText.position.x = -this.balanceButton.width + this.balanceText.width/6 ;
-      
-       
-
-        this.addChild( this.balanceButton);
-        this.balanceButton.addChild(this.balanceText);
-        
-        moneyInfo.Bet = (moneyInfo.maxLines+1)*moneyInfo.lineBet;
-        this.betText = new TextLabel(0, 0, 0.5, `Bet  :  ${moneyInfo.Bet}`, 25, 0xF2AE33 );
-        this.betText.position.x = this.betText.width/2;
-
-        this.betButton = new Sprite(Globals.resources.ButtonBg2.texture)
-        this.betButton.anchor.set(0.5);
-        this.betButton.scale.set(0.6);
-
-        this.betButton.position.x = this.lineBetButton.position.x + this.lineBetButton.width*1.05;
-        this.betButton.position.y = 280;
-        this.betText.anchor.set(1,0.5);
- 
-
-        this.addChild(this.betButton);
-        this.betButton.addChild(this.betText); 
-        
-        if(moneyInfo.Balance - moneyInfo.Bet >= 0)
-        {
-            this.spin.interactive = true;
-            this.spin.alpha = 1;
-        }
-        if(moneyInfo.Balance - moneyInfo.Bet < 0)
-        {
-            this.spin.interactive = false;
-            this.spin.alpha = 0.5;
-        }
-        this.payLineText();
-        this.wonButton.position.x = this.betButton.position.x + this.betButton.width*1.05;
-        this.balanceButton.position.x = this.lineBetButton.position.x - this.lineBetButton.width*1.05;
-        this.spin.position.x =  this.wonButton.position.x + this.wonButton.width*1.2  + this.spin.width/2;
-        this.paylinesButton.position.x =  this.balanceButton.position.x - this.balanceButton.width*1.05;
-
-
-     
+		
+        this.maxBetInit();
+        this.autoSpinBtnInit();
+        this.spinBtnInit(spinCallBack);
+        this.lineBtnInit();
+        this.winBtnInit();
+	    this.balanceBtnInit();
+        this.jackpotPanelInit();
+		this.BetBtnInit();
+        this.vaseInit();
     }
-
-    async callSpin()
-    {
-        assignPlayerBet();
-        this.spin.interactive = false;
-        const tween = new Tween(this.spin.scale)
-        .to({ x : 0.23, y: 0.23 }, 100) .easing(Easing.Back.InOut)  .yoyo(true) .repeat(1) .onComplete(()=>{}) .start();
-        this.spin.alpha = 0.5;
-
-        moneyInfo.score = 0;
-        const progress = await  this.updateWinningAmount();
-        let newBalance = moneyInfo.Balance - moneyInfo.Bet;
-        Globals.emitter?.Call("updateBalance",newBalance);
-    }
-
-
-    updateBalance(newBalance: number)
-    {
-        moneyInfo.Balance = newBalance;
-        this.balanceText.updateLabelText( `Balance  :  ${moneyInfo.Balance}`);
-    }
-
-    updateWinningAmount()
-    {
-        this.wonAmountText.updateLabelText( `Won  :  ${moneyInfo.score}`);
-    }
-
-    updateBetText()
-    {
-        moneyInfo.Bet = (moneyInfo.maxLines+1)*moneyInfo.lineBet;
-        this.betText.updateLabelText( `Bet  :  ${moneyInfo.Bet}`);
-        if(moneyInfo.Balance - moneyInfo.Bet >= 0)
-        {
-            this.spin.interactive = true;
-            this.spin.alpha = 1;
-        }
-        if(moneyInfo.Balance - moneyInfo.Bet < 0)
-        {
-            this.spin.interactive = false;
-            this.spin.alpha = 0.5;
-        }
-    }
-
-
-    lineBetText()
-    {
-        let betIndex = boardConfigVar.lineBet.length-1;
-        moneyInfo.lineBet = boardConfigVar.lineBet[betIndex];
-        const lineBetText = new TextLabel(0, 0, 0.5,boardConfigVar.lineBet[betIndex].toString(), 25, 0xFFFFFF );
-        
-        this.lineBetButton = new Sprite(Globals.resources.ButtonBg.texture)
-        this.lineBetButton.anchor.set(0.5);
-
-        this.lineBetButton.position.x = -this.lineBetButton.width/2 + 25;
-        this.lineBetButton.position.y = 280;
-        this.lineBetButton.scale.set(0.6);
-
-        this.addChild( this.lineBetButton);
-
-        this.lineBetButton.addChild(lineBetText);
-
-        this.lineBetL = new Sprite(Globals.resources.arrL.texture);
-        this.lineBetL.anchor.set(0.5);  
-        
-        this.lineBetR = new Sprite(Globals.resources.arrR.texture);
-        this.lineBetR.anchor.set(0.5);        
-        this.lineBetR.interactive = this.lineBetL.interactive = true;
-            
-        this.lineBetL.buttonMode   = true;
-        this.lineBetR.buttonMode = true;   
-         
-        this.lineBetL.on("pointerdown",()=>
-        {
-           if(betIndex == 0 && this.lineBetL.interactive )
-           {
-                this.lineBetL.interactive = false; 
-           }
-           if(betIndex ==  0 && !this.lineBetL.interactive)
-           {
-              return;
-           }
-            if(!this.lineBetR.interactive)
-            this.lineBetR.interactive = true;
-
-            betIndex--;
-            lineBetText.updateLabelText(boardConfigVar.lineBet[betIndex].toString());
-            moneyInfo.lineBet = boardConfigVar.lineBet[betIndex];
-            this.updateBetText();
-            // console.log("betIndex : " +betIndex);
-            // console.log("btnL : " +betButtonL.interactive);
-            // console.log("btnR : " +betButtonR.interactive);
-        })
-
-        this.lineBetR.on("pointerdown",()=>
-        {
-            if(betIndex ==  boardConfigVar.lineBet.length-1 && this.lineBetR.interactive)
-            {
-                this.lineBetR.interactive = false;
-            }
-            if(betIndex ==  boardConfigVar.lineBet.length-1 && !this.lineBetR.interactive)
-            {
-               return;
-            }
-            if(!this.lineBetL.interactive )
-            this.lineBetL.interactive = true;
-       
-            betIndex++;
-            lineBetText.updateLabelText(boardConfigVar.lineBet[betIndex].toString());
-            moneyInfo.lineBet = boardConfigVar.lineBet[betIndex];
-            this.updateBetText();
-
-            // console.log("betIndex : " +betIndex);
-            // console.log("btnL : " +betButtonL.interactive);
-            // console.log("btnR : " +betButtonR.interactive);
-        })
-
-        const betTextLable = new TextLabel(0, 0, 0.5,"Line Bet", 25, 0xF2AE33 );
-        betTextLable.anchor.set(0,0.5);
-        betTextLable.position.x =  - this.lineBetButton.width/2 - betTextLable.width/2 + this.lineBetR.width*1.5;
-        lineBetText.position.x = betTextLable.width/4 + lineBetText.width ;
-        this.lineBetR.position.x = this.lineBetButton.width - this.lineBetR.width; 
-        this.lineBetL.position.x = -this.lineBetButton.width + this.lineBetL.width; 
-
-        this.lineBetButton.addChild(this.lineBetL,this.lineBetR)
-        this.lineBetButton.addChild(betTextLable);
-    }
-
-    payLineText()
+    lineBtnInit()
     {
 
-        this.paylinesButton = new Sprite(Globals.resources.ButtonBg2.texture)
-        this.paylinesButton.anchor.set(0.5);
-        this.paylinesButton.scale.set(0.6);
-        this.paylinesButton.position.y = 280;
+		const linePanel = new Sprite(Globals.resources.lines.texture);
+		linePanel.anchor.set(0.5);
+		linePanel.position.set(-config.logicalWidth/2 +  linePanel.width, this.spinBtn.position.y);
 
-        this.addChild(this.paylinesButton);
-        let lineIndex = boardConfigVar.lineNo.length-1;
-        moneyInfo.maxLines = lineIndex;
-        const lineBetText = new TextLabel(0, 0, 0.5, boardConfigVar.lineNo[lineIndex].toString(), 25, 0xFFFFFF );
+		const lineText = new TextLabel(0, -linePanel.height / 1.8, 0.5, "LINES", 25, 0x3C2625);
+		lineText.style = style;
+		linePanel.addChild(lineText);
+		const pBtnSprites: any = [Globals.resources.pBtn.texture, Globals.resources.pBtnH.texture];
+		const pBtn = new AnimatedSprite(pBtnSprites);
+		pBtn.anchor.set(0.5);
+		pBtn.scale.set(0.8);
+		pBtn.gotoAndStop(0);
+		pBtn.position.set(linePanel.width / 4 + pBtn.width / 2 + linePanel.position.x, linePanel.position.y - 5)
+		pBtn.interactive = true;
+		pBtn.buttonMode = true;
+		pBtn.on("pointerdown", () => { pBtn.gotoAndStop(1);
+			if(!currentGameData.isMoving)
+				{
 
-        this.maxLinesButtonL = new Sprite(Globals.resources.arrL.texture);
-        this.maxLinesButtonL.anchor.set(0.5);        
-        this.maxLinesButtonL.scale.set(1); 
-        this.maxLinesButtonL.position.x = -this.paylinesButton.width + this.maxLinesButtonL.width; 
-        
-        this.maxLinesButtonR = new Sprite(Globals.resources.arrR.texture);
-        this.maxLinesButtonR.anchor.set(0.5);        
-        this.maxLinesButtonR.position.x = this.paylinesButton.width - this.maxLinesButtonL.width; 
-        this.maxLinesButtonL.interactive =true;
-        this.maxLinesButtonR.interactive = true;
-        this.maxLinesButtonR.buttonMode   = true;
-        this.maxLinesButtonL.buttonMode = true;
+					currentGameData.currentLines++;
+					if(currentGameData.currentLines >= initData.gameData.LinesCount.length )
+						{
+							currentGameData.currentLines = 0;
+						}
+						CurrentLineText.updateLabelText( initData.gameData.LinesCount[currentGameData.currentLines])
+					}
+		 })
+		pBtn.on("pointerup", () => { pBtn.gotoAndStop(0); })
+		pBtn.on("pointerout", () => { pBtn.gotoAndStop(0); })
 
-       this.maxLinesButtonL.on("pointerdown",()=>
-        {
-           if(lineIndex == 0 && this.maxLinesButtonL.interactive )
-           {
-                this.maxLinesButtonL.interactive = false; 
-           }
-           if(lineIndex ==  0 && !this.maxLinesButtonL.interactive)
-           {
-              return;
-           }
-            if(!this.maxLinesButtonR.interactive)
-            this.maxLinesButtonR.interactive = true;
-            lineIndex--;
-            lineBetText.updateLabelText( boardConfigVar.lineNo[lineIndex].toString());
-            moneyInfo.maxLines = lineIndex;
-           
-            this.updateBetText();
-            // console.log("betIndex : " +lineIndex);
-            // console.log("btnL : " +betButtonL.interactive);
-            // console.log("btnR : " +betButtonR.interactive);
-            Globals.emitter?.Call("linesActive");
-        })
+		const mBtnSprites: any = [Globals.resources.mBtn.texture, Globals.resources.mBtnH.texture];
+		const mBtn = new AnimatedSprite(mBtnSprites);
+		mBtn.anchor.set(0.5);
+		mBtn.scale.set(0.8);
+		mBtn.gotoAndStop(0);
+		mBtn.position.set(-linePanel.width / 4 - pBtn.width / 2 + linePanel.position.x, linePanel.position.y - 5)
+		mBtn.interactive = true;
+		mBtn.buttonMode = true;
+		mBtn.on("pointerdown", () => { mBtn.gotoAndStop(1);
+			if(!currentGameData.isMoving)
+				{
 
-        this.maxLinesButtonR.on("pointerdown",()=>
-        {
-            if(lineIndex ==   boardConfigVar.lineNo.length-1 && this.maxLinesButtonR.interactive)
-            {
-                this.maxLinesButtonR.interactive = false;
-            }
-            if(lineIndex ==   boardConfigVar.lineNo.length-1 && !this.maxLinesButtonR.interactive)
-            {
-               return;
-            }
-            if(!this.maxLinesButtonL.interactive )
-            this.maxLinesButtonL.interactive = true;
-       
-            lineIndex++;
-            lineBetText.updateLabelText( boardConfigVar.lineNo[lineIndex].toString());
-            moneyInfo.maxLines = lineIndex;
+					currentGameData.currentLines--;
+					if(currentGameData.currentLines < 0 )
+						{
+							currentGameData.currentLines = initData.gameData.LinesCount.length-1;
+						}
+						
+						CurrentLineText.updateLabelText( initData.gameData.LinesCount[currentGameData.currentLines])
+					}
+					})
+					mBtn.on("pointerup", () => { mBtn.gotoAndStop(0); })
+					mBtn.on("pointerout", () => { mBtn.gotoAndStop(0); })
 
-            // console.log("betIndex : " +lineIndex);
-            // console.log("btnL : " +betButtonL.interactive);
-            // console.log("btnR : " +betButtonR.interactive);
-            Globals.emitter?.Call("linesActive");
-            this.updateBetText();
-        })
+		this.addChild(pBtn);
+		this.addChild(mBtn);
+		this.addChild(linePanel);
 
-            const betTextLable = new TextLabel(0, 0, 0.5,"Lines Active", 25, 0xF2AE33 );
-            betTextLable.anchor.set(0,0.5)
-            betTextLable.position.x = -this.paylinesButton.width + this.maxLinesButtonL.width*2;
+		currentGameData.currentLines = initData.gameData.LinesCount.length-1;
+		const currentLine : number  = initData.gameData.LinesCount[currentGameData.currentLines];
+		const CurrentLineText = new TextLabel(0,-15,0.5,currentLine.toString(),40,0xFFFFFF)
+		linePanel.addChild(CurrentLineText)
 
-        this.paylinesButton.addChild(this.maxLinesButtonL,this.maxLinesButtonR);
-        lineBetText.position.x = betTextLable.width/2 + lineBetText.width/2
-        this.paylinesButton.addChild(betTextLable,lineBetText);
     }
-} 
+    winBtnInit()
+    {
+        const winPanel = new Sprite(Globals.resources.winPanel.texture);
+		winPanel.anchor.set(0.5);
+		this.addChild(winPanel);
+		winPanel.position.set(this.autoBetBtn.position.x + this.autoBetBtn.width / 2 + winPanel.width / 2, this.spinBtn.position.y);
+
+		const winPanelText = new TextLabel(0, -winPanel.height / 1.8, 0.5, "WON", 25, 0x3C2625);
+		winPanelText.style = style;
+		winPanel.addChild(winPanelText);
+
+		const currentWining : any  = ResultData.playerData.currentWining;
+		this.currentWiningText = new TextLabel(0,-15,0.5,currentWining.toString(),40,0xFFFFFF)
+		winPanel.addChild(this.currentWiningText)
+    }
+
+    balanceBtnInit()
+    {
+        const balencePanel = new Sprite(Globals.resources.balancePanel.texture);
+		balencePanel.anchor.set(0.5);
+		this.addChild(balencePanel);
+		balencePanel.position.set(config.logicalWidth/4 + balencePanel.width/1.5, this.spinBtn.position.y);
+		const balancePanelText = new TextLabel(0, -balencePanel.height / 1.8, 0.5, "BALANCE", 25, 0x3C2625);
+		balancePanelText.style = style;
+		balencePanel.addChild(balancePanelText);
+
+		currentGameData.currentBalance = initData.playerData.Balance;
+		this.currentBalanceText = new TextLabel(0,-15,0.5,currentGameData.currentBalance.toString(),40,0xFFFFFF)
+		balencePanel.addChild(this.currentBalanceText)
+    }
+    jackpotPanelInit()
+    {
+		const jackpotPanel = new Sprite(Globals.resources.PanelJackpot.texture);
+		jackpotPanel.anchor.set(0.5);
+		jackpotPanel.position.y = -config.logicalHeight / 4 - jackpotPanel.height / 2 - 20;
+		this.addChild(jackpotPanel);
+    }
+    vaseInit()
+    {
+        const vase1 = new Sprite(Globals.resources.fireVase.texture);
+		vase1.anchor.set(0.5);
+		this.addChild(vase1);
+		const fire1 = addFire();
+		vase1.addChild(fire1);
+		vase1.position.set(-config.logicalWidth/3, config.logicalHeight / 6 + vase1.height);
+
+		const vase2 = new Sprite(Globals.resources.fireVase.texture);
+		vase2.anchor.set(0.5);
+		this.addChild(vase2);
+		vase2.position.set(config.logicalWidth/3, config.logicalHeight / 6 + vase1.height);
+		this.sortChildren();
+		const fire2 = addFire();
+		vase2.addChild(fire2);
+		this.fireAnimation.push(fire1, fire2);
+    }
+
+    maxBetInit()
+    {
+		const maxBetSprites: any = [Globals.resources.maxBetBtn.texture, Globals.resources.maxBetBtOnPressed.texture];
+		this.maxbetBtn = new AnimatedSprite(maxBetSprites);
+		this.maxbetBtn.anchor.set(0.5);
+		this.maxbetBtn.scale.set(0.8);
+		this.maxbetBtn.gotoAndStop(0);
+		this.maxbetBtn.interactive = true;
+		this.maxbetBtn.buttonMode = true;
+		this.maxbetBtn.position.set(-this.maxbetBtn.width/1.7,config.logicalHeight/2 - this.maxbetBtn.height/2);
+		this.maxbetBtn.on("pointerdown", () => { this.maxbetBtn.gotoAndStop(1); 
+			currentGameData.currentBetIndex = initData.gameData.Bets[initData.gameData.Bets.length-1]
+			this.CurrentBetText.updateLabelText(currentGameData.currentBetIndex.toString());
+		})
+		this.maxbetBtn.on("pointerup", () => { this.maxbetBtn.gotoAndStop(0); })
+		this.maxbetBtn.on("pointerout", () => { this.maxbetBtn.gotoAndStop(0); })
+        this.addChild(this.maxbetBtn);
+    }
+    autoSpinBtnInit()
+    {
+		const autoSprites: any = [Globals.resources.autoSpin.texture, Globals.resources.autoSpinOnPressed.texture];
+		this.autoBetBtn = new AnimatedSprite(autoSprites);
+		this.autoBetBtn.anchor.set(0.5);
+		this.autoBetBtn.scale.set(0.8);
+		this.autoBetBtn.gotoAndStop(0);
+		this.autoBetBtn.interactive = true;
+		this.autoBetBtn.buttonMode = true;
+		this.autoBetBtn.position.set(this.autoBetBtn.width/1.7,config.logicalHeight/2 - this.autoBetBtn.height/2);
+		this.autoBetBtn.on("pointerdown", () => { this.autoBetBtn.gotoAndStop(1); })
+		this.autoBetBtn.on("pointerup", () => { this.autoBetBtn.gotoAndStop(0); })
+		this.autoBetBtn.on("pointerout", () => { this.autoBetBtn.gotoAndStop(0); })
+		this.addChild(this.autoBetBtn);
+
+    }
+    spinBtnInit(spinCallBack : ()=>void)
+    {
+        const spinSprites: any = [Globals.resources.spinBtn.texture, Globals.resources.spinBtnOnPressed.texture];
+		this.spinBtn = new AnimatedSprite(spinSprites);
+		this.spinBtn.anchor.set(0.5);
+		this.spinBtn.gotoAndStop(0);
+		this.spinBtn.scale.set(0.8);
+		this.spinBtn.interactive = true;
+		this.spinBtn.buttonMode = true;
+
+        this.spinBtn.position.set(0,config.logicalHeight/2 - this.spinBtn.height/2);
+		this.spinBtn.on("pointerdown", () => { this.spinBtn.gotoAndStop(1);Globals.Socket?.sendMessage("SPIN",{currentBet : initData.gameData.Bets[currentGameData.currentBetIndex]});
+		currentGameData.currentBalance -= initData.gameData.Bets[currentGameData.currentBetIndex];
+		this.currentBalanceText.updateLabelText(currentGameData.currentBalance.toString());
+		this.onSpin(true);spinCallBack();})
+		this.spinBtn.on("pointerup", () => { this.spinBtn.gotoAndStop(0); })
+		this.spinBtn.on("pointerout", () => { this.spinBtn.gotoAndStop(0); })
+        this.addChild(this.spinBtn);
+    }
+
+    BetBtnInit() {
+		const betPanel = new Sprite(Globals.resources.BetPanel.texture);
+		betPanel.anchor.set(0.5);
+		betPanel.position.set(this.maxbetBtn.position.x - betPanel.width * 1.4, this.spinBtn.position.y);
+
+		const betPanelText = new TextLabel(0, -betPanel.height / 1.8, 0.5, "TOTAL BET", 35, 0x3C2625);
+		betPanelText.style = style;
+		betPanel.addChild(betPanelText);
+
+		const pBtnSprites: any = [Globals.resources.pBtn.texture, Globals.resources.pBtnH.texture];
+		const pBtn = new AnimatedSprite(pBtnSprites);
+		pBtn.anchor.set(0.5);
+		pBtn.scale.set(0.8);
+		pBtn.gotoAndStop(0);
+		pBtn.position.set(betPanel.width / 4 + pBtn.width / 3 + betPanel.position.x, betPanel.position.y - 5)
+		pBtn.interactive = true;
+		pBtn.buttonMode = true;
+		pBtn.on("pointerdown", () => { pBtn.gotoAndStop(1);
+			if(!currentGameData.isMoving)
+			{
+
+				currentGameData.currentBetIndex++;
+				if(currentGameData.currentBetIndex >= initData.gameData.Bets.length )
+					{
+						currentGameData.currentBetIndex = 0;
+					}
+					this.CurrentBetText .updateLabelText( initData.gameData.Bets[currentGameData.currentBetIndex])
+				}
+		 })
+		pBtn.on("pointerup", () => { pBtn.gotoAndStop(0); })
+		pBtn.on("pointerout", () => { pBtn.gotoAndStop(0); })
+
+		const mBtnSprites: any = [Globals.resources.mBtn.texture, Globals.resources.mBtnH.texture];
+		const mBtn = new AnimatedSprite(mBtnSprites);
+		mBtn.anchor.set(0.5);
+		mBtn.scale.set(0.8);
+		mBtn.gotoAndStop(0);
+		mBtn.position.set(-betPanel.width / 4 - pBtn.width / 3 + betPanel.position.x, betPanel.position.y - 5)
+		mBtn.interactive = true;
+		mBtn.buttonMode = true;
+		mBtn.on("pointerdown", () =>  { mBtn.gotoAndStop(1);
+			if(!currentGameData.isMoving)
+			{
+
+				currentGameData.currentBetIndex--;
+				if(currentGameData.currentBetIndex < 0 )
+					{
+						currentGameData.currentBetIndex = initData.gameData.Bets.length-1;
+					}
+					
+					this.CurrentBetText .updateLabelText( initData.gameData.Bets[currentGameData.currentBetIndex]);
+				}
+				})
+		mBtn.on("pointerup", () => { mBtn.gotoAndStop(0); })
+		mBtn.on("pointerout", () => { mBtn.gotoAndStop(0); })
+
+		const currentBet : number  = initData.gameData.Bets[currentGameData.currentBetIndex];
+		this.CurrentBetText = new TextLabel(0,-15,0.5,currentBet.toString(),40,0xFFFFFF)
+		betPanel.addChild(this.CurrentBetText );
+
+		this.addChild(pBtn);
+		this.addChild(mBtn);
+		this.addChild(betPanel);
+
+	}
+
+    onSpin(interactive: boolean) {
+
+		currentGameData.isMoving = interactive;
+		if (interactive) {
+			this.spinBtn.interactive = false;
+			this.maxbetBtn.interactive = false;
+			this.autoBetBtn.interactive = false;
+			this.setFire(true);
+		}
+		else {
+			this.spinBtn.gotoAndStop(0);
+			this.spinBtn.interactive = true;
+			this.maxbetBtn.interactive = true;
+			this.autoBetBtn.interactive = true;
+		}
+	}
+    	
+	setFire(shouldSet: boolean) {
+		this.fireAnimation.forEach(element => {
+			if (shouldSet) {
+				element.play();
+				element.visible = true;
+			}
+			else
+			{
+				element.gotoAndStop(0)
+				element.visible = false;
+			}
+		});
+	}
+
+
+}
+
+function addFire() {
+    let sprites: any = [];
+    for (let i = 1; i <= 23; i++) {
+        let char = `fire_${i}`;
+        const symbol = Globals.resources[char].texture;
+        sprites.push(symbol);
+    }
+    const fire = new AnimatedSprite(sprites);
+    fire.anchor.set(0.5, 1);
+    fire.animationSpeed = 0.5;
+    fire.visible = false;
+    return fire;
+}

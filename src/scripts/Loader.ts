@@ -14,6 +14,7 @@ export class Loader {
 
     resources: any;
     loaderBarContainer: PIXI.Container | undefined;
+    apiDataLoaded : boolean = false;
 
 
     constructor(public loader: PIXI.Loader, container: PIXI.Container) {
@@ -36,12 +37,12 @@ export class Loader {
         //loaderbar
         this.loaderBarContainer = new PIXI.Container();
 
-        const logo = PIXI.Sprite.from(staticData.logoURL);
+        // const logo = PIXI.Sprite.from(staticData.logoURL);
 
-        logo.anchor.set(0.5,1);
-        logo.scale.set(0.5)
-        logo.x = config.logicalWidth / 2 - logo.width/2;
-        logo.y = config.logicalHeight / 2;
+        // logo.anchor.set(0.5,1);
+        // logo.scale.set(0.5)
+        // logo.x = config.logicalWidth / 2 - logo.width/2;
+        // logo.y = config.logicalHeight / 2;
 
         const progressBox = new PIXI.Graphics()
         const progressBar = new PIXI.Graphics();
@@ -62,7 +63,7 @@ export class Loader {
         // progressText.anchor.set(1, 0);
         // progressText.position = new PIXI.Point(boxData.x + boxData.width/2, boxData.y + boxData.height);
 
-        this.loaderBarContainer.addChild(logo);
+        // this.loaderBarContainer.addChild(logo);
         this.loaderBarContainer.addChild(progressBox);
         this.loaderBarContainer.addChild(progressBar);
         // this.loaderBarContainer.addChild(progressText);

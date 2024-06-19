@@ -2,26 +2,20 @@
 import { Howl } from 'howler';
 import * as PIXI from 'pixi.js';
 import { App } from './App';
-import { ScoreFunctions } from './DataHandler';
 import { MyEmitter } from './MyEmitter';
-import { SceneManager } from './SceneManager';
-import { Scene } from './Scene';
-import { Lines } from './Lines';
-import { Axios } from 'axios';
-import { url } from 'inspector';
-import { Url } from 'url';
-import { getPlayerCredit } from './ApiPasser';
+import { TextStyle } from 'pixi.js';
+import Stats from 'stats.js';
+import { SocketManager } from '../socket';
 
 type globalDataType = {
   resources: PIXI.utils.Dict<PIXI.LoaderResource>;
   emitter: MyEmitter | undefined;
   isMobile: boolean;
-  // fpsStats : Stats | undefined,
+  fpsStats : Stats ,
   soundResources: { [key: string]: Howl };
 
   App: App | undefined,
-  isVisible : boolean,
-  onMusic : boolean,
+  Socket : SocketManager | undefined,
 }
 
 export const Globals: globalDataType = {
@@ -31,238 +25,75 @@ export const Globals: globalDataType = {
     //  return true;
     return PIXI.utils.isMobile.any;
   },
-  // fpsStats: undefined,
+  fpsStats: new Stats(),
   App: undefined,
+  Socket: undefined,
   soundResources: {},
-  isVisible : true,
-  onMusic : true,
 };
 
-export const boardConfigVar =  {
-  boardBoxWidth : 0,
-  boardBoxHeight : 0,
-  Matrix : {x : 5, y : 3},
-  restartPos : 650,
-  // lineBet: [1 ,2 ,3 ,5 ,10 ,20 ,25 ,30 ,50 ,100 ,200 ,300 ,500 ,1000],
-  lineBet: [1 ,2 ,3 ,5 ,10],
-  // lineNo : [1 ,5 ,9 ,15 ,20]
-  lineNo : [1 ,2 ,3,4],
+
+export const currentGameData = {
+  currentBetIndex : 0,
+  won : 0,
+  AutoPlay: 0,
+  currentLines : 0,
+  currentBalance : 0,
+  isMoving : false,
 }
 
-export const moneyInfo = {
-  Balance : 1000, 
-  score : 0,
-  lineBet : 1,
-  maxLines : 1,
-  Bet : 0,
-}
+export const initData = {
+  gameData : {
+    Reel : [[]],
+    BonusData : [],
+    Bets : [],
+    LinesCount : [],
+    autoSpin : [],
+    Lines : [[]],
 
-export const cookieValues = {
-  userName : "",
-  token : "",
-}
+  },
+  playerData : {
+    Balance : 0,
+    haveWon : 0,
+    currentWining : 0,
+    currentBet : 0,
+  },
+};
 
+export const ResultData = {
+  gameData : {
+    BonusResult: [],
+    BonusStopIndex:  -1,
+    ResultReel: [[]],
+    WinAmout: 0,
+    freeSpins:  0,
+    isBonus:  false,
+    jackpot:  0,
+    linesToEmit:[],
+    symbolsToEmit: [],
+  },
+  playerData : {
+    Balance : 0,
+    haveWon : 0,
+    currentWining : 0,
+    currentBet : 0,
+  },
+};
+export const style = new TextStyle({
+  dropShadow: true,
+  dropShadowAngle: 1.8,
+  dropShadowColor: "#ffffff",
+  dropShadowDistance: 1,
+  fill: "#4f3130",
+  fillGradientStops: [
+    0.4
+  ],
+  fontWeight: "bolder",
+  lineJoin: "round",
+  miterLimit: 0,
+  stroke: "#4f3130",
+  strokeThickness: 1.5
+});
 
-export const getLineinfo : any = {
-  0 : {
-    color : "0xD32323",
-    locations : [[0,0],[0,1],[0,2],[0,3],[0,4]],
-    xPos : false,
-    yPos: 60,
-    payScale : 10,
-  }, 
-  1 : {
-    color : "0xFFC0CB",
-    locations : [[1,0],[1,1],[1,2],[1,3],[1,4]],
-    xPos : false,
-    yPos: 200,
-    payScale : 10,
-  }, 
-  2 : {
-    color : "0x0000FF",
-    locations : [[1,0],[0,1],[0,2],[0,3],[1,4]],
-    xPos : false,
-    yPos: 250,
-    payScale : 10,
-  }, 
-  3 : {
-    color : "0x800080",
-    locations : [[2,0],[2,1],[2,2],[2,3],[2,4]],
-    xPos : false,
-    yPos: 400,
-    payScale : 10,
-  }, 
-
-  // 4 : {
-  //   color : "0x00FF00",
-  //   locations : [[1,4],[1,3],[1,2],[1,1],[1,0]],
-  //   xPos : true,
-  //   yPos: 250,
-  //   payScale : 10,
-  // }, 
-  // 5 : {
-  //   color : "0xeca855",
-  //   locations : [[2,0],[1,1],[1,2],[1,3],[2,4]],
-  //   xPos : false,
-  //   yPos: 390,
-  //   payScale : 10,
-  // },
-  // 6 : {
-  //   color : "0x1db954",
-  //   locations : [[2,4],[2,3],[2,2],[2,1],[2,0]],
-  //   xPos : true,
-  //   yPos: 420,
-  //   payScale : 10,
-  // },
-  // 7 : {
-  //   color : "0xb5bf00",
-  //   locations : [[2,0],[1,1],[0,2],[0,3],[0,4]],
-  //   xPos : false,
-  //   yPos: 420,
-  //   payScale : 10,
-  // },
-  // 8 : {
-  //   color : "0xb7d1ce",
-  //   locations : [[0,0],[1,1],[2,2],[2,3],[2,4]],
-  //   xPos : false,
-  //   yPos: 10,
-  //   payScale : 10,
-  // },
-  // 9 : {
-  //   color : "0x9e1b32",
-  //   locations : [[1,0],[2,1],[2,2],[2,3],[1,4]],
-  //   xPos : true,
-  //   yPos: 280,
-  //   payScale : 10,
-  // },
-}
-
-export const slotCharArr = {
-  charArr : [['0',"2","7","3","2","4","2","8","0"],
-             ['2',"2","7","0","8","8","1","7","6"],
-             ['6',"2","8","3","6","0","2","8","7"],
-             ['5',"1","5","2","3","9","5","8","8"],
-             ['0',"9","1","4","8","7","1","8","0"],
-            ]
-} 
-
-export const slotCharInfo = (slotChar : string) => {
-  if(slotChar == "0") return 10;
-  if(slotChar == "1") return 20;
-  if(slotChar == "2") return 30;
-  if(slotChar == "3") return 40;
-  if(slotChar == "4") return 50;
-}
-
-export const boardConfig = () => {
-  if(boardConfigVar.Matrix.x == 5 && boardConfigVar.Matrix.y == 3) return [180,150];
-  if(boardConfigVar.Matrix.x == 5 && boardConfigVar.Matrix.y == 4) return [300,150];
-  if(boardConfigVar.Matrix.x == 3 && boardConfigVar.Matrix.y == 3) return [250,150];
-  if(boardConfigVar.Matrix.x == 4 && boardConfigVar.Matrix.y == 3) return [250,150];
-  else console.log("This Matrix Not Found"); return [0,0];
-}
-
-// export const ChangeBg = () => {
-//   if (CurrentGameData.CurrentLevel <= 1) {
-//     return 0;
-//   }
-//   if (CurrentGameData.CurrentLevel > 1 && CurrentGameData.CurrentLevel <= 3) {
-//     return 1;
-//   }
-//   if (CurrentGameData.CurrentLevel == 4) {
-//     return 2;
-//   }
-//   if (CurrentGameData.CurrentLevel == 5) {
-//     return 3;
-//   }
-//   if (CurrentGameData.CurrentLevel == 6) {
-//     return 4;
-//   }
-//   if (CurrentGameData.CurrentLevel == 7) {
-//     return 5;
-//   }
-//   if (CurrentGameData.CurrentLevel == 8) {
-//     return 6;
-//   }
-// }
-
-export function GetAnimationSprites(colorId: number) {
-
-  let animatedSprite: (PIXI.Texture<PIXI.Resource> | undefined)[] = [];
-  for (let i = 0; i <= 6; i++) {
-    animatedSprite.push(Globals.resources[`CandyExplosion${colorId}${i}`].texture);
-  }
-
-  return animatedSprite;
-}
-
-export function weightedRand(spec: any) {
-  var i, j, table: any = [];
-  for (i in spec) {
-    // The constant 10 below should be computed based on the
-    // weights in the spec for a correct and optimal table size.
-    // E.g. the spec {0:0.999, 1:0.001} will break this impl.
-    for (j = 0; j < spec[i] * 10; j++) {
-      table.push(i);
-    }
-  }
-  return function () {
-    return table[Math.floor(Math.random() * table.length)];
-  }
-}
-
-export function randomRange(max: number): number {
-  let rNumber = Math.floor(Math.random() * (max - 2000)) + 2000;
-  return rNumber;
-}
-export function GetColorCode(colorId: any) {
-  let colorCode = 0xFFFFFF;
-
-  if (colorId == 1) { colorCode = 0x000000; }
-
-  else if (colorId == 2) { colorCode = 0xea213a; }
-
-  else if (colorId == 3) { colorCode = 0xff7400; }
-
-  else if (colorId == 4) { colorCode = 0x23ff96; }
-
-  else if (colorId == 5) { colorCode = 0x449cf4; }
-
-  else if (colorId == 6) { colorCode = 0x9f78cc; }
-
-  else if (colorId == 7) { colorCode = 0xf5d7ff; }
-
-  else if (colorId == 8) { colorCode = 0x746a8e; }
-
-  else if (colorId == 15) { colorCode = 0xebecf0; }
-
-  else { colorCode = 0xFFFFFF }
-
-  return colorCode;
-
-}
-export function getRandomInt( max: number) {
-
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - 2) + 2); // The maximum is exclusive and the minimum is inclusive
-}
- 
-export function getCookie(name :string) {
-  const cookieArray = window.parent.document.cookie.split('; ');
-  for (const cookie of cookieArray) {
-    const [cookieName, cookieValue] = cookie.split('=');
-    if (cookieName === name) {
-      return cookieValue;
-    }
-  }
-  console.log("Cookie not Found");
-  
-  return null; // Cookie not found
-}
-
-export function setCookie(name: string, value: string, days: number) {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  const expiresString = `expires=${expires.toUTCString()}`;
-  document.cookie = `${name}=${value};${expiresString};path=/`;
-}
+export const testLines = [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2],
+[2,2, 1, 2, 2], [0, 0, 1, 0, 0], [1, 2, 2, 2, 1], [1, 0, 0, 0, 1], [2, 2, 1, 0, 0], [1, 2, 1, 0, 1],
+[1,0, 1, 2, 1]];
