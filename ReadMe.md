@@ -1,4 +1,4 @@
-## Slot Gold Of Egypt PIXI
+## Toddled Meat PIXI
 ***
  instal required dependecnies by `npm install` before running and building projects.
 
